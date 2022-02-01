@@ -1,7 +1,7 @@
 package io.aiven.guardian.kafka.backup
 
 import akka.stream.alpakka.s3.S3Settings
-import io.aiven.guardian.kafka.backup.KafkaClient
+import io.aiven.guardian.kafka.backup.KafkaPublisher
 import io.aiven.guardian.kafka.backup.s3.BackupClient
 import io.aiven.guardian.kafka.s3.{Config => S3Config}
 

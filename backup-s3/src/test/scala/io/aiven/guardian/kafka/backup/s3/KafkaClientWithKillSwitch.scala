@@ -7,7 +7,7 @@ import akka.kafka.ConsumerSettings
 import akka.kafka.scaladsl.Consumer
 import akka.stream.SharedKillSwitch
 import akka.stream.scaladsl.SourceWithContext
-import io.aiven.guardian.kafka.backup.KafkaClient
+import io.aiven.guardian.kafka.backup.KafkaPublisher
 import io.aiven.guardian.kafka.backup.configs.Backup
 import io.aiven.guardian.kafka.configs.KafkaCluster
 import io.aiven.guardian.kafka.models.ReducedConsumerRecord

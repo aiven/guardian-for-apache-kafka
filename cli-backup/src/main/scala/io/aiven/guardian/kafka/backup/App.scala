@@ -4,8 +4,8 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import io.aiven.guardian.kafka.backup.BackupClientInterface
-import io.aiven.guardian.kafka.backup.KafkaClient
-import io.aiven.guardian.kafka.backup.KafkaClientInterface
+import io.aiven.guardian.kafka.backup.KafkaPublisher
+import io.aiven.guardian.kafka.backup.KafkaPublisherInterface
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future

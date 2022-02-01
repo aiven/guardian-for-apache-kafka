@@ -6,7 +6,7 @@ import akka.stream.alpakka.s3.S3Headers
 import akka.stream.alpakka.s3.S3Settings
 import akka.stream.alpakka.s3.SuccessfulUploadPart
 import akka.stream.scaladsl.Sink
-import io.aiven.guardian.kafka.backup.KafkaClientInterface
+import io.aiven.guardian.kafka.backup.KafkaPublisherInterface
 import io.aiven.guardian.kafka.backup.configs.Backup
 import io.aiven.guardian.kafka.s3.configs.{S3 => S3Config}
 

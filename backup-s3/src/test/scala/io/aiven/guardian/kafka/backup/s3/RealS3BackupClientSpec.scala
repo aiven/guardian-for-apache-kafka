@@ -19,7 +19,7 @@ import io.aiven.guardian.kafka.Generators.KafkaDataInChunksWithTimePeriod
 import io.aiven.guardian.kafka.Generators.kafkaDataWithMinSizeGen
 import io.aiven.guardian.kafka.KafkaClusterTest
 import io.aiven.guardian.kafka.Utils._
-import io.aiven.guardian.kafka.backup.KafkaClient
+import io.aiven.guardian.kafka.backup.KafkaPublisher
 import io.aiven.guardian.kafka.backup.MockedBackupClientInterface
 import io.aiven.guardian.kafka.backup.configs.Backup
 import io.aiven.guardian.kafka.backup.configs.ChronoUnitSlice

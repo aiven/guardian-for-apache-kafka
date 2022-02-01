@@ -1,7 +1,7 @@
 package io.aiven.guardian.kafka.backup
 
 import io.aiven.guardian.cli.AkkaSettings
-import io.aiven.guardian.kafka.backup.KafkaClient
+import io.aiven.guardian.kafka.backup.KafkaPublisher
 import io.aiven.guardian.kafka.backup.{Config => BackupConfig}
 import io.aiven.guardian.kafka.{Config => KafkaConfig}
 
