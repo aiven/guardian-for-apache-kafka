@@ -77,7 +77,8 @@ class MockedBackupClientInterface(override val kafkaClientInterface: MockedKafka
   override implicit lazy val backupConfig: Backup = Backup(
     KafkaGroupId,
     timeConfiguration,
-    10 seconds
+    10 seconds,
+    None
   )
 
   /** Override this type to define the result of backing up data to a datasource

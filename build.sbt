@@ -116,8 +116,8 @@ lazy val core = project
     librarySettings,
     name := s"$baseName-core",
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-actor"        % akkaVersion % Provided,
-      "com.typesafe.akka" %% "akka-stream"       % akkaVersion % Provided,
+      "com.typesafe.akka" %% "akka-actor"        % akkaVersion,
+      "com.typesafe.akka" %% "akka-stream"       % akkaVersion,
       "com.typesafe.akka" %% "akka-stream-kafka" % alpakkaKafkaVersion,
       // Ideally we shouldn't be explicitly providing a kafka-clients version and instead getting the version
       // transitively from akka-streams-kafka however there isn't a nice way to extract a transitive dependency

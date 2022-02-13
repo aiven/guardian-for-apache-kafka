@@ -7,10 +7,7 @@ import akka.stream.scaladsl._
 import akka.util.ByteString
 import com.typesafe.scalalogging.LazyLogging
 import io.aiven.guardian.kafka.Errors
-import io.aiven.guardian.kafka.backup.configs.Backup
-import io.aiven.guardian.kafka.backup.configs.ChronoUnitSlice
-import io.aiven.guardian.kafka.backup.configs.PeriodFromFirst
-import io.aiven.guardian.kafka.backup.configs.TimeConfiguration
+import io.aiven.guardian.kafka.backup.configs._
 import io.aiven.guardian.kafka.codecs.Circe._
 import io.aiven.guardian.kafka.models.ReducedConsumerRecord
 import io.circe.syntax._
@@ -299,6 +296,40 @@ trait BackupClientInterface[T <: KafkaClientInterface] extends LazyLogging {
   private[backup] val terminateSource: Source[ByteString, NotUsed] =
     Source.single(ByteString("null]"))
 
+  private[backup] def compressContextFlow[CtxIn, CtxOut, Mat](
+      flowWithContext: FlowWithContext[ByteString, CtxIn, ByteString, CtxOut, Mat]
+  ) =
+    backupConfig.compression match {
+      case Some(compression) =>
+        flowWithContext.unsafeDataVia(compressionLevel(compression))
+      case None => flowWithContext
+    }
+
+  private[backup] def compressContextSink[Ctx, Mat](sink: Sink[(ByteString, Ctx), Mat]) =
+    backupConfig.compression match {
+      case Some(compression) =>
+        FlowWithContext[ByteString, Ctx]
+          .unsafeDataVia(compressionLevel(compression))
+          .asFlow
+          .toMat(
+            sink
+          )(Keep.right)
+      case None => sink
+    }
+
+  private[backup] def compressSource[Mat](source: Source[ByteString, Mat]) =
+    backupConfig.compression match {
+      case Some(compression) =>
+        source.via(compressionLevel(compression))
+      case None =>
+        source
+    }
+
+  private[backup] def compressionLevel(compression: Compression) = compression match {
+    case Gzip(Some(level)) => Compression.gzip(level)
+    case Gzip(None)        => Compression.gzip
+  }
+
   /** Prepares the sink before it gets handed to `backupToStorageSink`
     */
   private[backup] def prepareStartOfStream(uploadStateResult: UploadStateResult,
@@ -308,47 +339,54 @@ trait BackupClientInterface[T <: KafkaClientInterface] extends LazyLogging {
       case (Some(previous), None) =>
         backupConfig.timeConfiguration match {
           case _: PeriodFromFirst =>
-            backupToStorageSink(start.key, None)
-              .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
-                (byteString, byteStringContext.context)
-              }
+            compressContextSink(
+              backupToStorageSink(start.key, None)
+                .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
+                  (byteString, byteStringContext.context)
+                }
+            )
           case _: ChronoUnitSlice =>
             logger.warn(
               s"Detected previous backup using PeriodFromFirst however current configuration is now changed to ChronoUnitSlice. Object/file with an older key: ${start.key} may contain newer events than object/file with newer key: ${previous.previousKey}"
             )
-            backupToStorageSink(start.key, None)
-              .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
-                (byteString, byteStringContext.context)
-              }
+            compressContextSink(
+              backupToStorageSink(start.key, None)
+                .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
+                  (byteString, byteStringContext.context)
+                }
+            )
         }
       case (None, Some(current)) =>
         backupConfig.timeConfiguration match {
           case _: PeriodFromFirst =>
             throw Errors.UnhandledStreamCase(List(current))
           case _: ChronoUnitSlice =>
-            FlowWithContext
-              .fromTuples(
-                Flow[(ByteString, ByteStringContext)]
-                  .flatMapPrefix(1) {
-                    case Seq((byteString, start: Start)) =>
-                      val withoutStartOfJsonArray = byteString.drop(1)
-                      Flow[(ByteString, ByteStringContext)].prepend(
-                        Source.single((withoutStartOfJsonArray, start))
-                      )
-                    case _ => throw Errors.ExpectedStartOfSource
-                  }
-              )
-              .asFlow
+            compressContextFlow(
+              FlowWithContext
+                .fromTuples(
+                  Flow[(ByteString, ByteStringContext)]
+                    .flatMapPrefix(1) {
+                      case Seq((byteString, start: Start)) =>
+                        val withoutStartOfJsonArray = byteString.drop(1)
+                        Flow[(ByteString, ByteStringContext)].prepend(
+                          Source.single((withoutStartOfJsonArray, start))
+                        )
+                      case _ => throw Errors.ExpectedStartOfSource
+                    }
+                )
+            ).asFlow
               .toMat(backupToStorageSink(start.key, Some(current)).contramap[(ByteString, ByteStringContext)] {
                 case (byteString, byteStringContext) =>
                   (byteString, byteStringContext.context)
               })(Keep.right)
         }
       case (None, None) =>
-        backupToStorageSink(start.key, None)
-          .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
-            (byteString, byteStringContext.context)
-          }
+        compressContextSink(
+          backupToStorageSink(start.key, None)
+            .contramap[(ByteString, ByteStringContext)] { case (byteString, byteStringContext) =>
+              (byteString, byteStringContext.context)
+            }
+        )
       case (Some(previous), Some(current)) =>
         throw Errors.UnhandledStreamCase(List(previous.state, current))
     }
@@ -374,10 +412,16 @@ trait BackupClientInterface[T <: KafkaClientInterface] extends LazyLogging {
         case (Seq(only: Element, End), _) =>
           // This case only occurs when you have a single element in a timeslice.
           // We have to terminate immediately to create a JSON array with a single element
-          val key = calculateKey(only.reducedConsumerRecord.toOffsetDateTime, backupConfig.timeConfiguration)
+          val key = calculateKey(only.reducedConsumerRecord.toOffsetDateTime,
+                                 backupConfig.timeConfiguration,
+                                 backupConfig.compression
+          )
           transformFirstElement(only, key, terminate = true)
         case (Seq(first: Element, second: Element), restOfReducedConsumerRecords) =>
-          val key         = calculateKey(first.reducedConsumerRecord.toOffsetDateTime, backupConfig.timeConfiguration)
+          val key = calculateKey(first.reducedConsumerRecord.toOffsetDateTime,
+                                 backupConfig.timeConfiguration,
+                                 backupConfig.compression
+          )
           val firstSource = transformFirstElement(first, key, terminate = false)
 
           val rest = Source.combine(
@@ -402,7 +446,10 @@ trait BackupClientInterface[T <: KafkaClientInterface] extends LazyLogging {
           )
         case (Seq(only: Element), _) =>
           // This case can also occur when user terminates the stream
-          val key = calculateKey(only.reducedConsumerRecord.toOffsetDateTime, backupConfig.timeConfiguration)
+          val key = calculateKey(only.reducedConsumerRecord.toOffsetDateTime,
+                                 backupConfig.timeConfiguration,
+                                 backupConfig.compression
+          )
           transformFirstElement(only, key, terminate = false)
         case (rest, _) =>
           throw Errors.UnhandledStreamCase(rest)
@@ -422,7 +469,7 @@ trait BackupClientInterface[T <: KafkaClientInterface] extends LazyLogging {
                 _ = logger.debug(s"Received $uploadStateResult from getCurrentUploadState with key:${start.key}")
                 _ <- (uploadStateResult.previous, uploadStateResult.current) match {
                        case (Some(previous), None) =>
-                         terminateSource
+                         compressSource(terminateSource)
                            .runWith(backupToStorageTerminateSink(previous))
                            .map(Some.apply)(ExecutionContext.parasitic)
                        case _ => Future.successful(None)
@@ -464,13 +511,21 @@ object BackupClientInterface {
     * @return
     *   A `String` that can be used either as some object key or a filename
     */
-  def calculateKey(offsetDateTime: OffsetDateTime, timeConfiguration: TimeConfiguration): String = {
+  def calculateKey(offsetDateTime: OffsetDateTime,
+                   timeConfiguration: TimeConfiguration,
+                   maybeCompression: Option[Compression]
+  ): String = {
     val finalTime = timeConfiguration match {
       case ChronoUnitSlice(chronoUnit) => offsetDateTime.truncatedTo(chronoUnit)
       case _                           => offsetDateTime
     }
 
-    s"${BackupClientInterface.formatOffsetDateTime(finalTime)}.json"
+    val extension = maybeCompression match {
+      case Some(_: Gzip) => "json.gz"
+      case None          => "json"
+    }
+
+    s"${BackupClientInterface.formatOffsetDateTime(finalTime)}.$extension"
   }
 
   /** Calculates whether we have rolled over a time period given number of divided periods.

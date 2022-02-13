@@ -8,10 +8,7 @@ import io.aiven.guardian.cli.MainUtils
 import io.aiven.guardian.cli.arguments.PropertiesOpt._
 import io.aiven.guardian.cli.arguments.StorageOpt
 import io.aiven.guardian.cli.options.Options
-import io.aiven.guardian.kafka.backup.configs.Backup
-import io.aiven.guardian.kafka.backup.configs.ChronoUnitSlice
-import io.aiven.guardian.kafka.backup.configs.PeriodFromFirst
-import io.aiven.guardian.kafka.backup.configs.TimeConfiguration
+import io.aiven.guardian.kafka.backup.configs._
 import io.aiven.guardian.kafka.configs.KafkaCluster
 import io.aiven.guardian.kafka.s3.configs.S3
 import org.slf4j.LoggerFactory
@@ -56,13 +53,22 @@ class Entry(val initializedApp: AtomicReference[Option[(App[_], Promise[Unit])]]
             )
             .withDefault(10 seconds)
 
+        val compressionLevelOpt =
+          Opts.option[Int]("compression-level", help = "Level of compression to use if enabled").orNone
+
+        val gzipOpt = Opts.subcommand("gzip", help = "Enable gzip compression") {
+          compressionLevelOpt.map(Gzip)
+        }
+
+        val compressionOpt = gzipOpt.orNone
+
         val backupOpt =
-          (groupIdOpt, timeConfigurationOpt, commitTimeoutBufferOpt).tupled.mapValidated {
-            case (maybeGroupId, maybeTimeConfiguration, commitTimeoutBuffer) =>
+          (groupIdOpt, timeConfigurationOpt, commitTimeoutBufferOpt, compressionOpt).tupled.mapValidated {
+            case (maybeGroupId, maybeTimeConfiguration, commitTimeoutBuffer, maybeCompression) =>
               import io.aiven.guardian.kafka.backup.Config.backupConfig
               (maybeGroupId, maybeTimeConfiguration) match {
                 case (Some(groupId), Some(timeConfiguration)) =>
-                  Backup(groupId, timeConfiguration, commitTimeoutBuffer).validNel
+                  Backup(groupId, timeConfiguration, commitTimeoutBuffer, maybeCompression).validNel
                 case _ =>
                   Options
                     .optionalPureConfigValue(() => backupConfig)
