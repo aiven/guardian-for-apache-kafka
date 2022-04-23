@@ -406,16 +406,24 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 ThisBuild / githubWorkflowJavaVersions := List(JavaSpec.temurin("11"))
 
+ThisBuild / githubWorkflowBuildPreamble ++= Seq(
+  WorkflowStep.Use(
+    UseRef.Public("aws-actions", "configure-aws-credentials", "v1"),
+    name = Some("Configure AWS credentials"),
+    params = Map(
+      "role-to-assume" -> "arn:aws:iam::310017459104:role/aiven-guardian-github-action",
+      "aws-region"     -> "us-west-2"
+    )
+  )
+)
+
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(
     List("clean", "coverage", "test"),
     name = Some("Build project"),
     env = Map(
-      "ALPAKKA_S3_REGION_PROVIDER"                   -> "static",
-      "ALPAKKA_S3_REGION_DEFAULT_REGION"             -> "us-west-2",
-      "ALPAKKA_S3_AWS_CREDENTIALS_PROVIDER"          -> "static",
-      "ALPAKKA_S3_AWS_CREDENTIALS_ACCESS_KEY_ID"     -> "${{ secrets.AWS_ACCESS_KEY }}",
-      "ALPAKKA_S3_AWS_CREDENTIALS_SECRET_ACCESS_KEY" -> "${{ secrets.AWS_SECRET_KEY }}"
+      "ALPAKKA_S3_REGION_PROVIDER"          -> "default",
+      "ALPAKKA_S3_AWS_CREDENTIALS_PROVIDER" -> "default"
     )
   ),
   WorkflowStep.Sbt(List("docs/makeSite"), name = Some("Compile docs"))
