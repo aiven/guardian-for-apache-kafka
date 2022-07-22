@@ -13,6 +13,10 @@ on:
   push:
     branches: [main]
 
+# permission can be added at job level or workflow level
+permissions:
+  id-token: write
+
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -53,16 +57,19 @@ jobs:
       - name: 'Linter: Scalafix checks'
         run: sbt ++${{ matrix.scala }} 'scalafixAll --check'
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: 'arn:aws:iam::310017459104:role/aiven-guardian-github-action'
+          aws-region: us-west-2
+
       - name: Check that workflows are up to date
         run: sbt ++${{ matrix.scala }} githubWorkflowCheck
 
       - name: Build project
         env:
-          ALPAKKA_S3_AWS_CREDENTIALS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
-          ALPAKKA_S3_REGION_DEFAULT_REGION: us-west-2
-          ALPAKKA_S3_AWS_CREDENTIALS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
-          ALPAKKA_S3_AWS_CREDENTIALS_PROVIDER: static
-          ALPAKKA_S3_REGION_PROVIDER: static
+          ALPAKKA_S3_REGION_PROVIDER: default
+          ALPAKKA_S3_AWS_CREDENTIALS_PROVIDER: default
         run: sbt ++${{ matrix.scala }} clean coverage test
 
       - name: Compile docs
