@@ -86,7 +86,7 @@ class RealS3RestoreClientSpec
 
         implicit val config: S3Config = s3Config
         implicit val backupConfig: Backup =
-          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds)
+          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds, None)
 
         val backupClient =
           new BackupClient(Some(s3Settings))(new KafkaClient(configureConsumer = baseKafkaConfig),

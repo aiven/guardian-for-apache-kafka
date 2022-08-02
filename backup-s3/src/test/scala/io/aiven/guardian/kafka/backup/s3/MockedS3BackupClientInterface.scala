@@ -23,7 +23,7 @@ class MockedS3BackupClientInterface(
 )(implicit val s3Headers: S3Headers, system: ActorSystem)
     extends BackupClient(maybeS3Settings)(
       new MockedKafkaClientInterface(kafkaData),
-      Backup(MockedBackupClientInterface.KafkaGroupId, timeConfiguration, 10 seconds),
+      Backup(MockedBackupClientInterface.KafkaGroupId, timeConfiguration, 10 seconds, None),
       implicitly,
       s3Config,
       implicitly

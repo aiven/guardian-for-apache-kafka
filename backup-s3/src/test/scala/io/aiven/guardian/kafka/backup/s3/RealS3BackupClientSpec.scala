@@ -108,7 +108,7 @@ class RealS3BackupClientSpec
 
         implicit val config: S3Config = s3Config
         implicit val backupConfig: Backup =
-          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds)
+          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds, None)
 
         val producerSettings = createProducer()
 
@@ -195,7 +195,7 @@ class RealS3BackupClientSpec
 
         implicit val config: S3Config = s3Config
         implicit val backupConfig: Backup =
-          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds)
+          Backup(kafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds, None)
 
         val producerSettings = createProducer()
 
@@ -340,7 +340,7 @@ class RealS3BackupClientSpec
 
         implicit val config: S3Config = s3Config
         implicit val backupConfig: Backup =
-          Backup(kafkaConsumerGroup, ChronoUnitSlice(ChronoUnit.MINUTES), 10 seconds)
+          Backup(kafkaConsumerGroup, ChronoUnitSlice(ChronoUnit.MINUTES), 10 seconds, None)
 
         val producerSettings = createProducer()
 
@@ -451,7 +451,7 @@ class RealS3BackupClientSpec
       implicit val config: S3Config = s3Config
 
       implicit val backupConfig: Backup =
-        Backup(kafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds)
+        Backup(kafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds, None)
       val backupClient =
         new BackupClient(Some(s3Settings))(new KafkaClient(configureConsumer = baseKafkaConfig),
                                            implicitly,
@@ -540,7 +540,7 @@ class RealS3BackupClientSpec
 
       implicit val config: S3Config = s3Config
       implicit val backupConfig: Backup =
-        Backup(MockedBackupClientInterface.KafkaGroupId, PeriodFromFirst(1 second), 10 seconds)
+        Backup(MockedBackupClientInterface.KafkaGroupId, PeriodFromFirst(1 second), 10 seconds, None)
 
       val backupClient =
         new BackupClient(Some(s3Settings))(new MockedKafkaClientInterface(Source(data)),
@@ -636,7 +636,8 @@ class RealS3BackupClientSpec
           val producerSettings = createProducer()
 
           val backupClientOne = {
-            implicit val backupConfig: Backup = Backup(firstKafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds)
+            implicit val backupConfig: Backup =
+              Backup(firstKafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds, None)
 
             new BackupClient(Some(s3Settings))(
               new KafkaClient(configureConsumer = baseKafkaConfig),
@@ -648,7 +649,8 @@ class RealS3BackupClientSpec
           }
 
           val backupClientTwo = {
-            implicit val backupConfig: Backup = Backup(secondKafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds)
+            implicit val backupConfig: Backup =
+              Backup(secondKafkaConsumerGroup, PeriodFromFirst(1 minute), 10 seconds, None)
 
             new BackupClient(Some(s3Settings))(
               new KafkaClient(configureConsumer = baseKafkaConfig),
@@ -775,7 +777,8 @@ class RealS3BackupClientSpec
           val producerSettings = createProducer()
 
           val backupClientOne = {
-            implicit val backupConfig: Backup = Backup(firstKafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds)
+            implicit val backupConfig: Backup =
+              Backup(firstKafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds, None)
 
             new BackupClient(Some(s3Settings))(
               new KafkaClient(configureConsumer = baseKafkaConfig),
@@ -787,7 +790,8 @@ class RealS3BackupClientSpec
           }
 
           val backupClientTwo = {
-            implicit val backupConfig: Backup = Backup(secondKafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds)
+            implicit val backupConfig: Backup =
+              Backup(secondKafkaConsumerGroup, PeriodFromFirst(1 second), 10 seconds, None)
 
             new BackupClient(Some(s3Settings))(
               new KafkaClient(configureConsumer = baseKafkaConfig),
